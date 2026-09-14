@@ -1,0 +1,9 @@
+{
+  "name": "Prompt Studio V4.1 Intelligence",
+  "short_name": "Prompt Studio",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#111827",
+  "icons": []
+}
