@@ -97,11 +97,34 @@ function renderAnalysis(text) {
     .join('');
 }
 
+function createDraftElement(draft) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'draft';
+
+  const date = document.createElement('span');
+  date.textContent = new Date(draft.createdAt).toLocaleString('pt-BR');
+
+  const text = document.createElement('p');
+  text.textContent = draft.text;
+
+  wrapper.append(date, text);
+  return wrapper;
+}
+
 async function refreshDrafts() {
-  const drafts = await listDrafts();
-  draftsEl.innerHTML = drafts.length
-    ? drafts.map(d => `<div class="draft"><span>${new Date(d.createdAt).toLocaleString('pt-BR')}</span><p>${d.text}</p></div>`).join('')
-    : 'Nenhum rascunho salvo.';
+  try {
+    const drafts = await listDrafts();
+    draftsEl.replaceChildren();
+
+    if (!drafts.length) {
+      draftsEl.textContent = 'Nenhum rascunho salvo.';
+      return;
+    }
+
+    drafts.forEach(draft => draftsEl.append(createDraftElement(draft)));
+  } catch {
+    draftsEl.textContent = 'Não foi possível carregar os rascunhos locais.';
+  }
 }
 
 document.querySelector('#analyzeBtn').addEventListener('click', () => {
@@ -113,12 +136,20 @@ document.querySelector('#analyzeBtn').addEventListener('click', () => {
 document.querySelector('#saveBtn').addEventListener('click', async () => {
   const text = input.value.trim();
   if (!text) return;
-  await saveDraft(text);
-  await refreshDrafts();
+  try {
+    await saveDraft(text);
+    await refreshDrafts();
+  } catch {
+    draftsEl.textContent = 'Não foi possível salvar o rascunho neste navegador.';
+  }
 });
 
 refreshDrafts();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      document.querySelector('#statusBtn').textContent = 'Online, sem modo offline';
+    });
+  });
 }

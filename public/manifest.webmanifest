@@ -1,0 +1,18 @@
+{
+  "name": "Prompt Studio V4.1 Intelligence",
+  "short_name": "Prompt Studio",
+  "description": "Transforme intenções em instruções executáveis.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

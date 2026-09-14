@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Prompt Studio">
+  <rect width="512" height="512" rx="112" fill="#111827"/>
+  <path d="M126 156c0-28 22-50 50-50h160c28 0 50 22 50 50v118c0 28-22 50-50 50h-92l-78 68v-68c-23-5-40-25-40-50V156Z" fill="#f8fafc"/>
+  <path d="M188 202h136M188 248h92" stroke="#2563eb" stroke-width="28" stroke-linecap="round"/>
+</svg>
