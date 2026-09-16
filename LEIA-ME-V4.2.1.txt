@@ -1,0 +1,35 @@
+PROMPT STUDIO V4.2.1 — ROBUSTA DE VALIDAÇÃO
+
+Correções da auditoria:
+- PWA atualizado (index, manifest e service worker)
+- intenção principal + secundária
+- modos Processo/Melhoria e Pesquisa
+- score estrutural menos dependente de comprimento
+- separação explícita entre score estrutural e qualidade real
+- Médico de Prompts com Antes x Depois
+- versionamento real em store própria do IndexedDB
+- comparador A/B entre versões reais
+- laboratório ligado à versão testada
+- métricas reais de qualidade, precisão, utilidade e esforço de correção
+- fluxos com entrada/saída por etapa
+- backup com validação de schema
+- migração do banco prompt-studio-v4-2 de schema 1 para schema 2
+- botão global Relatar problema
+- testes automatizados ampliados
+
+SUBSTITUIR/ADICIONAR:
+index.html
+manifest.webmanifest
+sw.js
+src/main.js
+src/styles.css
+src/modules/intelligence.js
+src/modules/scoring.js
+src/services/local-db.js
+tests/intelligence.test.js
+
+NÃO ALTERAR:
+.github/workflows/deploy.yml
+vite.config.js
+package.json
+package-lock.json

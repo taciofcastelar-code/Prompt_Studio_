@@ -1,17 +1,19 @@
 import { openDB } from 'idb';
-const DB='prompt-studio-v4-2';
-const STORES=['projects','prompts','tests','templates','workflows','issues'];
-const dbPromise=openDB(DB,1,{upgrade(db){for(const name of STORES){if(!db.objectStoreNames.contains(name)){const s=db.createObjectStore(name,{keyPath:'id',autoIncrement:true});s.createIndex('updatedAt','updatedAt');}}}});
-async function addOrPut(store,value){const db=await dbPromise;const now=Date.now();const payload={...value,updatedAt:now};if(value.id)return db.put(store,payload);return db.add(store,{...payload,createdAt:now});}
-async function all(store){const db=await dbPromise;const items=await db.getAll(store);return items.sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));}
+const DB_NAME='prompt-studio-v4-2';const DB_VERSION=2;const STORES=['projects','prompts','promptVersions','tests','templates','workflows','issues'];
+const dbPromise=openDB(DB_NAME,DB_VERSION,{upgrade(db,oldVersion){if(oldVersion<1){for(const n of ['projects','prompts','tests','templates','workflows','issues'])if(!db.objectStoreNames.contains(n))db.createObjectStore(n,{keyPath:'id',autoIncrement:true});}if(oldVersion<2&&!db.objectStoreNames.contains('promptVersions')){const s=db.createObjectStore('promptVersions',{keyPath:'id',autoIncrement:true});s.createIndex('promptId','promptId');s.createIndex('createdAt','createdAt');}}});
+async function addOrPut(store,value){const db=await dbPromise,now=Date.now();if(value.id)return db.put(store,{...value,updatedAt:now});return db.add(store,{...value,createdAt:now,updatedAt:now});}
+async function list(store){const db=await dbPromise,items=await db.getAll(store);return items.sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));}
 async function del(store,id){const db=await dbPromise;return db.delete(store,Number(id));}
-export const saveProject=v=>addOrPut('projects',v); export const listProjects=()=>all('projects'); export const deleteProject=id=>del('projects',id);
-export const savePrompt=v=>addOrPut('prompts',v); export const listPrompts=()=>all('prompts'); export const deletePrompt=id=>del('prompts',id);
-export const saveTest=v=>addOrPut('tests',v); export const listTests=()=>all('tests'); export const deleteTest=id=>del('tests',id);
-export const saveTemplate=v=>addOrPut('templates',v); export const listTemplates=()=>all('templates'); export const deleteTemplate=id=>del('templates',id);
-export const saveWorkflow=v=>addOrPut('workflows',v); export const listWorkflows=()=>all('workflows'); export const deleteWorkflow=id=>del('workflows',id);
-export const saveIssue=v=>addOrPut('issues',v); export const listIssues=()=>all('issues'); export const deleteIssue=id=>del('issues',id);
-
-export async function exportAllData(){const out={version:'4.2',exportedAt:new Date().toISOString()};for(const s of STORES)out[s]=await all(s);return out;}
-export async function importAllData(data){const db=await dbPromise;for(const s of STORES){if(!Array.isArray(data[s]))continue;const tx=db.transaction(s,'readwrite');for(const item of data[s])await tx.store.put(item);await tx.done;}}
+export const saveProject=v=>addOrPut('projects',v);export const listProjects=()=>list('projects');export const deleteProject=id=>del('projects',id);
+export const createPrompt=v=>addOrPut('prompts',v);export const savePrompt=createPrompt;export const listPrompts=()=>list('prompts');
+export async function deletePrompt(id){const db=await dbPromise,pid=Number(id);const tx=db.transaction(['prompts','promptVersions'],'readwrite');await tx.objectStore('prompts').delete(pid);const versions=await tx.objectStore('promptVersions').index('promptId').getAll(pid);for(const v of versions)await tx.objectStore('promptVersions').delete(v.id);await tx.done;}
+export async function createPromptVersion(data){const db=await dbPromise,pid=Number(data.promptId),existing=await db.getAllFromIndex('promptVersions','promptId',pid),version=existing.length?Math.max(...existing.map(v=>Number(v.version||0)))+1:1;return db.add('promptVersions',{...data,promptId:pid,version,createdAt:Date.now(),updatedAt:Date.now()});}
+export const listPromptVersions=()=>list('promptVersions');export async function getPromptVersion(id){const db=await dbPromise;return db.get('promptVersions',Number(id));}
+export const saveTest=v=>addOrPut('tests',v);export const listTests=()=>list('tests');export const deleteTest=id=>del('tests',id);
+export const saveTemplate=v=>addOrPut('templates',v);export const listTemplates=()=>list('templates');export const deleteTemplate=id=>del('templates',id);
+export const saveWorkflow=v=>addOrPut('workflows',v);export const listWorkflows=()=>list('workflows');export const deleteWorkflow=id=>del('workflows',id);
+export const saveIssue=v=>addOrPut('issues',v);export const listIssues=()=>list('issues');export const deleteIssue=id=>del('issues',id);
+function validateBackup(data){if(!data||typeof data!=='object')throw new Error('arquivo JSON inválido');if(data.schema!=='prompt-studio-backup')throw new Error('formato de backup não reconhecido');if(!data.version)throw new Error('versão do backup ausente');for(const s of STORES)if(data[s]!==undefined&&!Array.isArray(data[s]))throw new Error(`campo ${s} deve ser uma lista`);return true;}
+export async function exportAllData(){const out={schema:'prompt-studio-backup',version:'4.2.1',exportedAt:new Date().toISOString()};for(const s of STORES)out[s]=await list(s);return out;}
+export async function importAllData(data){validateBackup(data);const db=await dbPromise;for(const s of STORES){if(!Array.isArray(data[s]))continue;const tx=db.transaction(s,'readwrite');for(const item of data[s]){if(!item||typeof item!=='object')throw new Error(`registro inválido em ${s}`);await tx.store.put(item);}await tx.done;}}
 export async function clearAllData(){const db=await dbPromise;for(const s of STORES)await db.clear(s);}

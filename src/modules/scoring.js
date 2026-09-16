@@ -1,17 +1,2 @@
 const clamp=n=>Math.max(0,Math.min(100,Math.round(n)));
-export function scorePrompt(text,analysis){
-  const len=(text||'').trim().length, codes=new Set(analysis.issues.map(x=>x.code));
-  const dimensions={
-    Clareza:clamp(52+Math.min(len/10,30)-(codes.has('ambiguous_objective')?25:0)),
-    Contexto:clamp(42+Math.min(len/8,42)-(codes.has('insufficient_context')?30:0)),
-    Especificidade:clamp(55+Math.min(len/22,24)-analysis.issues.length*4),
-    Assertividade:clamp(66-(codes.has('ambiguous_objective')?20:0)+Math.min(len/35,14)),
-    Eficiência:clamp(92-(codes.has('possible_overload')?35:0)),
-    Aplicabilidade:clamp(63+Math.min(len/38,20)),
-    Estrutura:clamp(codes.has('missing_output_format')?48:90),
-    'Critérios de sucesso':clamp(codes.has('missing_success_criteria')?42:92)
-  };
-  const w={Clareza:.16,Contexto:.14,Especificidade:.14,Assertividade:.12,Eficiência:.10,Aplicabilidade:.12,Estrutura:.10,'Critérios de sucesso':.12};
-  const overall=clamp(Object.entries(dimensions).reduce((s,[k,v])=>s+v*w[k],0));
-  return {overall,dimensions};
-}
+export function scorePrompt(text,analysis){const s=analysis.sections||{};const codes=new Set((analysis.issues||[]).map(i=>i.code));const dimensions={Clareza:clamp(s.objective?90:45),Contexto:clamp(s.context?88:(text.length>220?72:46)),Controle:clamp(s.constraints?88:50),Estrutura:clamp(s.format?90:48),Verificabilidade:clamp(s.success?92:45),Direcionamento:clamp(s.audience?86:68),Eficiência:clamp(codes.has('possible_overload')?58:88)};const w={Clareza:.18,Contexto:.16,Controle:.14,Estrutura:.14,Verificabilidade:.16,Direcionamento:.10,Eficiência:.12};return{overall:clamp(Object.entries(dimensions).reduce((sum,[k,v])=>sum+v*w[k],0)),dimensions};}

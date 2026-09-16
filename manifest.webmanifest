@@ -1,9 +1,12 @@
 {
-  "name": "Prompt Studio V4.1 Intelligence",
+  "name": "Prompt Studio V4.2.1",
   "short_name": "Prompt Studio",
+  "description": "Construa, diagnostique, versione, teste e melhore prompts.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "background_color": "#f6f7f9",
   "theme_color": "#111827",
+  "lang": "pt-BR",
   "icons": []
 }
