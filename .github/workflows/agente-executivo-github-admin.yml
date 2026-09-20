@@ -1,0 +1,81 @@
+name: Agente Executivo GitHub Admin
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  dispatch:
+    if: >
+      github.event.issue.user.login == 'taciofcastelar-code' &&
+      startsWith(github.event.issue.title, '[GITHUB-ADMIN]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate request JSON
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ISSUE_BODY" | jq -e . >/tmp/request.json
+          action="$(jq -r '.action // empty' /tmp/request.json)"
+          case "$action" in
+            create_repository|rename_repository|archive_repository|change_visibility|configure_pages|delete_repository) ;;
+            *) echo "Unsupported action: $action"; exit 1 ;;
+          esac
+
+      - name: Get GitHub Actions OIDC token
+        id: oidc
+        run: |
+          set -euo pipefail
+          token="$(
+            curl -fsSL               -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"               "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=agente-executivo-github-admin"             | jq -r '.value'
+          )"
+          test -n "$token"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Execute GitHub admin action
+        id: admin
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+          http_code="$(
+            curl -sS               -o /tmp/response.json               -w '%{http_code}'               -X POST               -H "Authorization: Bearer $OIDC_TOKEN"               -H "Content-Type: application/json"               --data-binary @/tmp/request.json               "https://afjhcdsxcreonhopgbav.supabase.co/functions/v1/github-admin-dispatch"
+          )"
+          echo "http_code=$http_code" >> "$GITHUB_OUTPUT"
+          jq . /tmp/response.json
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            exit 1
+          fi
+
+      - name: Comment success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          HTTP_CODE: ${{ steps.admin.outputs.http_code }}
+        run: |
+          gh api             --method POST             "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments"             -f body="Agente Executivo GitHub Admin: ação executada com sucesso (HTTP ${HTTP_CODE})."
+
+      - name: Close successful request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh api             --method PATCH             "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"             -f state=closed
+
+      - name: Comment failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh api             --method POST             "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments"             -f body="A execução administrativa falhou. Consulte o run do GitHub Actions para os detalhes."
